@@ -1,0 +1,61 @@
+
+volumes:
+  db-data:
+
+services:
+  # ---------- PostgreSQL ----------
+  db:
+    image: postgres:15-alpine
+    container_name: fitness-db
+    environment:
+      POSTGRES_DB: fitness
+      POSTGRES_USER: fitness
+      POSTGRES_PASSWORD: fitness
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - redash_default
+
+  # ---------- Data Generator ----------
+  generator:
+    build: ./generator
+    container_name: fitness-generator
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_USER: fitness
+      DB_PASS: fitness
+      DB_NAME: fitness
+    restart: always
+    networks:
+      - redash_default
+
+
+  # ---------- Jupyter ----------
+  jupyter:
+    image: jupyter/scipy-notebook
+    container_name: fitness-jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      JUPYTER_TOKEN: "jupyter123"
+      DB_HOST: db
+      DB_USER: fitness
+      DB_PASS: fitness
+      DB_NAME: fitness
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - redash_default
+
+networks:
+  redash_default:
+    external: true
